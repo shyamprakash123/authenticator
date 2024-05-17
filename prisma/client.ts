@@ -155,7 +155,7 @@ async function linkUserAndThirdPartyApp(
       status: 200,
     };
   } catch (err) {
-    return { msg: err, status: 400 };
+    return { msg: "Token is Invalid or expired", status: 400 };
   }
 }
 
