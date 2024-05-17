@@ -151,6 +151,26 @@ async function linkUserAndThirdPartyApp(
   return authT.userId;
 }
 
+async function getUsers(clientSecret: string) {
+  const users = await prisma.thirdPartyApp.findMany({
+    where: {
+      clientSecret: clientSecret,
+    },
+    select: {
+      users: {
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          password: false,
+          createdAt: false,
+        },
+      },
+    },
+  });
+  return users;
+}
+
 async function getTwoFactorCode(userId: number) {
   const authCodes = await prisma.twoFactorCode.findMany({
     where: { userId },
@@ -243,4 +263,5 @@ export {
   updateTwoFactorCodes,
   verifyTwoFactorCode,
   updateAndGetTwoFactorCodes,
+  getUsers,
 };
