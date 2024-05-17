@@ -117,11 +117,11 @@ async function linkUserAndThirdPartyApp(
   const authT = await prisma.authToken.findFirstOrThrow({
     where: { token: authToken, expiresAt: { gte: new Date() } },
   });
-  if (!authT) return "Invalid or expired auth token";
+  if (!authT) return { msg: "Invalid or expired auth token", status: 401 };
   const rel = await prisma.user.findFirst({
     where: { thirdPartyApps: { some: { clientSecret } }, id: authT.userId },
   });
-  if (rel) return "User already linked to this third party app";
+  if (rel) return { msg: "User already linked to this app", status: 400 };
   const appId = await prisma.thirdPartyApp.findFirst({
     where: { clientSecret },
   });
@@ -139,7 +139,7 @@ async function linkUserAndThirdPartyApp(
   });
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + 60 * 1000);
-  if (!appId) return "Third party app not found";
+  if (!appId) return { msg: "Third party app not found", status: 404 };
   await prisma.twoFactorCode.create({
     data: {
       code,
@@ -148,7 +148,11 @@ async function linkUserAndThirdPartyApp(
       expiresAt,
     },
   });
-  return authT.userId;
+  return {
+    msg: "User linked to third party app",
+    userId: authT.userId,
+    status: 200,
+  };
 }
 
 async function getUsers(clientSecret: string) {
@@ -236,7 +240,7 @@ async function verifyTwoFactorCode(
   const thirdPartyApp = await prisma.thirdPartyApp.findFirst({
     where: { clientSecret },
   });
-  if (!thirdPartyApp) throw new Error("Third party app not found");
+  if (!thirdPartyApp) return { msg: "Third party app not found", status: 404 };
 
   const twoFactorCode = await prisma.twoFactorCode.findUnique({
     where: {
@@ -246,8 +250,8 @@ async function verifyTwoFactorCode(
       expiresAt: { gte: new Date() },
     },
   });
-  if (!twoFactorCode) throw new Error("Invalid or expired code");
-  return twoFactorCode;
+  if (!twoFactorCode) return { msg: "Invalid or expired code", status: 401 };
+  return { msg: "Code verified", status: 200 };
 }
 
 export {
