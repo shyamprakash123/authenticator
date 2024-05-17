@@ -7,10 +7,7 @@ export async function POST(req: any) {
   try {
     const linkStatus = await linkUserAndThirdPartyApp(authToken, clientSecret);
     if (linkStatus.status !== 200)
-      return NextResponse.json(
-        { error: linkStatus.msg },
-        { status: linkStatus.status }
-      );
+      return NextResponse.json({ error: linkStatus.msg }, { status: 400 });
     return NextResponse.json(
       { msg: linkStatus.msg, userId: linkStatus.userId },
       { status: linkStatus.status }

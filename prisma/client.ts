@@ -114,45 +114,49 @@ async function linkUserAndThirdPartyApp(
   authToken: string,
   clientSecret: string
 ) {
-  const authT = await prisma.authToken.findFirstOrThrow({
-    where: { token: authToken, expiresAt: { gte: new Date() } },
-  });
-  if (!authT) return { msg: "Invalid or expired auth token", status: 401 };
-  const rel = await prisma.user.findFirst({
-    where: { thirdPartyApps: { some: { clientSecret } }, id: authT.userId },
-  });
-  if (rel) return { msg: "User already linked to this app", status: 400 };
-  const appId = await prisma.thirdPartyApp.findFirst({
-    where: { clientSecret },
-  });
-  await prisma.user.update({
-    where: { id: authT.userId },
-    data: {
-      thirdPartyApps: { connect: { id: appId?.id } },
-    },
-  });
-  await prisma.thirdPartyApp.update({
-    where: { clientSecret },
-    data: {
-      users: { connect: { id: authT.userId } },
-    },
-  });
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = new Date(Date.now() + 60 * 1000);
-  if (!appId) return { msg: "Third party app not found", status: 404 };
-  await prisma.twoFactorCode.create({
-    data: {
-      code,
+  try {
+    const authT = await prisma.authToken.findFirstOrThrow({
+      where: { token: authToken, expiresAt: { gte: new Date() } },
+    });
+    if (!authT) return { msg: "Invalid or expired auth token", status: 401 };
+    const rel = await prisma.user.findFirst({
+      where: { thirdPartyApps: { some: { clientSecret } }, id: authT.userId },
+    });
+    if (rel) return { msg: "User already linked to this app", status: 400 };
+    const appId = await prisma.thirdPartyApp.findFirst({
+      where: { clientSecret },
+    });
+    await prisma.user.update({
+      where: { id: authT.userId },
+      data: {
+        thirdPartyApps: { connect: { id: appId?.id } },
+      },
+    });
+    await prisma.thirdPartyApp.update({
+      where: { clientSecret },
+      data: {
+        users: { connect: { id: authT.userId } },
+      },
+    });
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 60 * 1000);
+    if (!appId) return { msg: "Third party app not found", status: 404 };
+    await prisma.twoFactorCode.create({
+      data: {
+        code,
+        userId: authT.userId,
+        thirdPartyAppId: appId?.id,
+        expiresAt,
+      },
+    });
+    return {
+      msg: "User linked to third party app",
       userId: authT.userId,
-      thirdPartyAppId: appId?.id,
-      expiresAt,
-    },
-  });
-  return {
-    msg: "User linked to third party app",
-    userId: authT.userId,
-    status: 200,
-  };
+      status: 200,
+    };
+  } catch (err) {
+    return { msg: err, status: 400 };
+  }
 }
 
 async function getUsers(clientSecret: string) {
